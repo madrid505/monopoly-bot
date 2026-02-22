@@ -1,70 +1,81 @@
 # bot.py
-import asyncio
 from telegram import Update
-from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, MessageHandler, filters
-from config import TOKEN, OWNER_ID, GROUP_IDS, BANK_DEFAULT, ADMIN_BANK, OWNER_BANK
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters
+from config import BOT_TOKEN, OWNER_ID, GROUP_IDS, BANK_DEFAULT, ADMIN_BANK, OWNER_BANK
 
-# ----- بيانات البنك -----
-user_balances = {}
+# 🏦 بيانات الرصيد لكل مستخدم
+user_balance = {}
 
-async def bank_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
+# ------------------- وظائف البنك -------------------
+async def balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    balance = user_balances.get(user_id, BANK_DEFAULT)
+    balance = user_balance.get(user_id, BANK_DEFAULT)
     await update.message.reply_text(f"رصيدك الحالي: {balance} 💰")
 
-# ----- أوامر الإدارة -----
-class AdminCommands:
-    @staticmethod
-    async def raise_rank(update: Update, context: ContextTypes.DEFAULT_TYPE):
-        await update.message.reply_text("تم رفع الرتبة ✅")
+async def gift(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if len(context.args) != 2:
+        await update.message.reply_text("استخدام: /gift <user_id> <amount>")
+        return
+    try:
+        target_id = int(context.args[0])
+        amount = int(context.args[1])
+    except ValueError:
+        await update.message.reply_text("الرجاء إدخال أرقام صحيحة.")
+        return
+    sender_id = update.effective_user.id
+    sender_balance = user_balance.get(sender_id, BANK_DEFAULT)
+    if sender_balance < amount:
+        await update.message.reply_text("ليس لديك رصيد كافي لإرسال هذه الهديه.")
+        return
+    user_balance[sender_id] = sender_balance - amount
+    user_balance[target_id] = user_balance.get(target_id, BANK_DEFAULT) + amount
+    await update.message.reply_text(f"تم إرسال {amount} 💰 للمستخدم {target_id}.")
 
-    @staticmethod
-    async def lower_rank(update: Update, context: ContextTypes.DEFAULT_TYPE):
-        await update.message.reply_text("تم تنزيل الرتبة ✅")
+# ------------------- أوامر الإدارة -------------------
+async def raise_rank(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("تم رفع الرتبة 🔼")
 
-    @staticmethod
-    async def clear_rank(update: Update, context: ContextTypes.DEFAULT_TYPE):
-        await update.message.reply_text("تم مسح الرتبة ✅")
+async def lower_rank(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("تم تنزيل الرتبة 🔽")
 
-    @staticmethod
-    async def ban(update: Update, context: ContextTypes.DEFAULT_TYPE):
-        await update.message.reply_text("تم حظر العضو ❌")
+async def clear_rank(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("تم مسح الرتبة 🧹")
 
-    @staticmethod
-    async def mute(update: Update, context: ContextTypes.DEFAULT_TYPE):
-        await update.message.reply_text("تم كتم العضو 🔇")
+async def ban_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("تم حظر المستخدم ⛔")
 
-admin = AdminCommands()
+async def mute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("تم كتم المستخدم 🔇")
 
-# ----- معالجة الرسائل بالعربية -----
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.message.text
-    if text == "/رصيد":
-        await bank_game(update, context)
-    elif text == "/رفع":
-        await admin.raise_rank(update, context)
-    elif text == "/تنزيل":
-        await admin.lower_rank(update, context)
-    elif text == "/مسح":
-        await admin.clear_rank(update, context)
-    elif text == "/حظر":
-        await admin.ban(update, context)
-    elif text == "/كتم":
-        await admin.mute(update, context)
-    else:
-        await update.message.reply_text("أمر غير معروف ❌")
+# ------------------- أوامر الألعاب -------------------
+async def roll_dice(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    import random
+    dice = random.randint(1, 6)
+    await update.message.reply_text(f"نتيجة الزهر 🎲: {dice}")
 
-# ----- تشغيل البوت -----
-async def main():
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
+# ------------------- تهيئة البوت -------------------
+app = ApplicationBuilder().token(BOT_TOKEN).build()
 
-    # تعيين MessageHandler لجميع الرسائل
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+# أوامر البنك
+app.add_handler(CommandHandler("balance", balance))
+app.add_handler(CommandHandler("gift", gift))
 
-    print("البوت شغّال الآن 🟢")
-    await app.start()
-    await app.updater.start_polling()
-    await app.updater.idle()
+# أوامر الإدارة
+app.add_handler(CommandHandler("raise", raise_rank))
+app.add_handler(CommandHandler("lower", lower_rank))
+app.add_handler(CommandHandler("clear", clear_rank))
+app.add_handler(CommandHandler("ban", ban_user))
+app.add_handler(CommandHandler("mute", mute_user))
 
-if __name__ == "__main__":
-    asyncio.run(main())
+# أوامر الألعاب
+app.add_handler(CommandHandler("roll", roll_dice))
+
+# ردود عربية على الأوامر بالإنجليزية
+async def unknown_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("أمر غير معروف ❌")
+
+app.add_handler(MessageHandler(filters.COMMAND, unknown_command))
+
+# ------------------- تشغيل البوت -------------------
+print("البوت شغال الآن ✅")
+app.run_polling()
