@@ -1,27 +1,6 @@
-# config.py
-
-# توكن البوت الجديد من BotFather
-TOKEN = "8509643139:AAEMFhKGe7UyfwtBqI3ZJrwC55ZZTqGsGPY"
-
-# رقم معرف مالك البوت
+echo "TOKEN = '8509643139:AAEMFhKGe7UyfwtBqI3ZJrwC55ZZTqGsGPY'
 OWNER_ID = 5010882230
-
-# رصيد البوت للمالك
-OWNER_BANK = 1000000000000  # تريليونات حسب طلبك
-
-# رصيد المشرفين
-ADMIN_BANK = 1000000  # يمكنك تعديل المبلغ
-
-# الرصيد الافتراضي لأي مستخدم جديد
 BANK_DEFAULT = 1000
-
-# قائمة بالمعرفات (IDs) الخاصة بالمشرفين والمدراء
-ADMINS = [
-    # ضع هنا معرفات المشرفين الآخرين إذا لزم الأمر
-]
-
-# خيارات إضافية ممكن تستخدمها في باقي البوت
-GAME_SETTINGS = {
-    "daily_bonus": 500,
-    "max_gift": 100000,
-}
+ADMIN_BANK = 50000
+OWNER_BANK = 999999999999
+" > ~/monopoly-bot/config.py
