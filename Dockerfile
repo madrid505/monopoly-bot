@@ -1,14 +1,4 @@
-# استخدم صورة Python الرسمية
-FROM python:3.11-slim
-
-# اعمل مجلد للتطبيق
-WORKDIR /app
-
-# انسخ كل الملفات للمجلد
-COPY . /app
-
-# ثبت المتطلبات
-RUN pip install --no-cache-dir -r requirements.txt
-
-# شغل البوت عند بدء الحاوية
-CMD ["python", "bot.py"]
+cd ~/monopoly-bot
+git add Dockerfile
+git commit -m "Add Dockerfile for JustRunMy build"
+git push justrun HEAD:deploy
