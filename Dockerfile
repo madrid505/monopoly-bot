@@ -1,4 +1,5 @@
-cd ~/monopoly-bot
-git add Dockerfile
-git commit -m "Add Dockerfile for JustRunMy build"
-git push justrun HEAD:deploy
+FROM python:3.11-slim
+WORKDIR /app
+COPY . /app
+RUN pip install --no-cache-dir -r requirements.txt
+CMD ["python", "bot.py"]
