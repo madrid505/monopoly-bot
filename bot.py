@@ -1,54 +1,70 @@
 # bot.py
-import logging
+import asyncio
 from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
-from config import TOKEN, OWNER_ID, BANK_DEFAULT, ADMIN_BANK, OWNER_BANK
+from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, MessageHandler, filters
+from config import TOKEN, OWNER_ID, GROUP_IDS, BANK_DEFAULT, ADMIN_BANK, OWNER_BANK
 
-# تهيئة سجل الأحداث
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
+# ----- بيانات البنك -----
+user_balances = {}
 
-# قاعدة البيانات البسيطة للرصيد
-balances = {}
-
-# أمر الرصيد
 async def bank_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    if user_id == OWNER_ID:
-        balances[user_id] = OWNER_BANK
-    elif user_id in [OWNER_ID]:  # هنا يمكن إضافة IDs للمدراء والمشرفين
-        balances[user_id] = ADMIN_BANK
+    balance = user_balances.get(user_id, BANK_DEFAULT)
+    await update.message.reply_text(f"رصيدك الحالي: {balance} 💰")
+
+# ----- أوامر الإدارة -----
+class AdminCommands:
+    @staticmethod
+    async def raise_rank(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        await update.message.reply_text("تم رفع الرتبة ✅")
+
+    @staticmethod
+    async def lower_rank(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        await update.message.reply_text("تم تنزيل الرتبة ✅")
+
+    @staticmethod
+    async def clear_rank(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        await update.message.reply_text("تم مسح الرتبة ✅")
+
+    @staticmethod
+    async def ban(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        await update.message.reply_text("تم حظر العضو ❌")
+
+    @staticmethod
+    async def mute(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        await update.message.reply_text("تم كتم العضو 🔇")
+
+admin = AdminCommands()
+
+# ----- معالجة الرسائل بالعربية -----
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text
+    if text == "/رصيد":
+        await bank_game(update, context)
+    elif text == "/رفع":
+        await admin.raise_rank(update, context)
+    elif text == "/تنزيل":
+        await admin.lower_rank(update, context)
+    elif text == "/مسح":
+        await admin.clear_rank(update, context)
+    elif text == "/حظر":
+        await admin.ban(update, context)
+    elif text == "/كتم":
+        await admin.mute(update, context)
     else:
-        if user_id not in balances:
-            balances[user_id] = BANK_DEFAULT
-    await update.message.reply_text(f"رصيدك الحالي: {balances[user_id]} 💰")
+        await update.message.reply_text("أمر غير معروف ❌")
 
-# أمر رفع الرتبة (للمدير أو المالك)
-async def raise_rank(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    if user_id != OWNER_ID:
-        await update.message.reply_text("❌ ليس لديك صلاحية تنفيذ هذا الأمر")
-        return
-    if len(context.args) < 2:
-        await update.message.reply_text("استخدام: /رفع <user_id> <المبلغ>")
-        return
-    try:
-        target_id = int(context.args[0])
-        amount = int(context.args[1])
-        balances[target_id] = balances.get(target_id, BANK_DEFAULT) + amount
-        await update.message.reply_text(f"✅ تم إضافة {amount} إلى رصيد {target_id}")
-    except ValueError:
-        await update.message.reply_text("❌ المعرف أو المبلغ غير صحيح")
+# ----- تشغيل البوت -----
+async def main():
+    app = ApplicationBuilder().token(BOT_TOKEN).build()
 
-# بدء البوت
+    # تعيين MessageHandler لجميع الرسائل
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+
+    print("البوت شغّال الآن 🟢")
+    await app.start()
+    await app.updater.start_polling()
+    await app.updater.idle()
+
 if __name__ == "__main__":
-    app = ApplicationBuilder().token(TOKEN).build()
-
-    # إضافة أوامر
-    app.add_handler(CommandHandler("رصيد", bank_game))
-    app.add_handler(CommandHandler("رفع", raise_rank))
-
-    print("🚀 البوت شغال الآن...")
-    app.run_polling()
+    asyncio.run(main())
